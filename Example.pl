@@ -1,1 +1,1 @@
-Loves (Rooster,Hen)
+loves(rooster,hen).
