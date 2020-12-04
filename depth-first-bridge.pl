@@ -1,28 +1,83 @@
 :- dynamic(crossTime/2).
 :- dynamic(timeLimit/1).
-
-
-solve_dfs(Estado,_,[]) :- final_state(Estado).
-
-
-solve_dfs(Estado,Historia,[Movida|Movidas]) :-
-      move(Estado,Movida),              
-      update(Estado,Movida,Estado2),     
-      legal(Estado2),                    
-      not(member(Estado2,Historia)),    
-      solve_dfs(Estado2,[Estado2|Historia],Movidas).  
-
-test_dfs(Problema,Movidas) :-
-      initial_state(Estado),      
-      solve_dfs(Estado,[Estado],Movidas).
+:- dynamic(crosserLimit/1).
 
 
 
+%------------------Depth first call
+depth_first_bridge(State, Sol) :-
+      initial_state(State),      
+      solve_dfs(State,[State],Sol).
+
+%------------------Depth first solving
+solve_dfs(State, _, []) :- 
+      final_state(State).
+
+solve_dfs(State,Path,[Move|Moves]) :-
+      move(State, Move),
+      update(State, Move, NewState),
+      legal(NewState),
+      not(member(NewState, Path)),
+      solve_dfs(NewState, [State|Path], Moves).
+
+
+%---------------Initial state
+initial_state([0,l,[a,b,c,d],[]]):-
+      assert(timeLimit(17)),
+      assert(crosserLimit(2)),
+      assert(crossTime(a,1)),
+      assert(crossTime(b,2)),
+      assert(crossTime(c,7)),
+      assert(crossTime(d,10)).
+
+/*
 initial_state([0,l,L,[]]):-
+      input_time_limit(0, 0),
+      input_crossers('Y'),
+      input_crosser_limit(0, 0),
       find_all_crossers([],L).
 
-final_state([X,r,[],L]):-
+input_time_limit('Y',Time):-
+      assert(timeLimit(Time)).
+
+input_time_limit(_,_):-
+    write('Digite el tiempo limite en minutos:'),nl,
+    read(Time),
+    write('Es este tiempo correcto? (Y/N)'),nl,
+    write(Time),write(':'),
+    read(Response),
+    input_time_limit(Response,Time).
+
+input_crosser_limit('Y',Limit):-
+      assert(crosserLimit(Limit)).
+
+input_crosser_limit(_,_):-
+    write('Digite el limite del puente:'),nl,
+    read(Limit),
+    write('Es este limite correcto? (Y/N)'),nl,
+    write(Limit),write(':'),
+    read(Response),
+    input_crosser_limit(Response,Limit).
+
+input_crossers('Y') :-
+      write('Inserte el nombre de una persona:'),nl,
+      read(Name),
+      write('Inserte el tiempo que tarda en cruzar el puente:'),nl,
+      read(Time),
+      assert_crossers(Name,Time),
+      write('Desea ingresar otra persona? (Y/N):'),nl,
+      read(X),
+      input_crossers(X).
+input_crossers('N').
+
+assert_crossers(Name, Time):-
+      assert(crossTime(Name, Time)).
+*/
+
+%---------------Final state
+final_state([Time,r,[],L]):-
       timeLimit(X),
+      Time =< X,
       find_all_crossers([],L).
 
 find_all_crossers(Tmp,List):-
@@ -32,49 +87,53 @@ find_all_crossers(Tmp,List):-
          find_all_crossers([NewName|Tmp],List); List = Tmp 
       ).
 
+%------------Move
+move([_,l,Left,_],Move):-
+      cross(Left,Move).
 
-move(zgm(izq,I,_),Carga):-member(Carga,I).
-move(zgm(der,_,D),Carga):-member(Carga,D).
-move(zgm(_,_,_),solo).
+move([_,r,_,Right],Move):-
+      cross(Right,Move).
+
+cross(Side,Move):- 
+      comb(1,Side,Move);
+      comb(2,Side,Move).
+
+comb(N,L,X):-length(X,N),mem1(X,L).
+
+mem1([],Y).
+mem1([H|T],Y):-member(H,Y),rest(H,Y,New),mem1(T,New).
+
+rest(A,L,R):- append(_,[A|R],L),!.
+
+%------------Update
+update([T1,l,L1,R1], Move,[T2,r,L2,R2]):-
+      take(Move,L1,L2),
+      append(Move,R1,R2),
+      findtime(Move,T),
+      T2 is T1+T.
+
+update([T1,r,L1,R1], Move,[T2,l,L2,R2]):-
+      take(Move,R1,R2),
+      append(Move,L1,L2),
+      findtime(Move,T),
+      T2 is T1+T.
+
+take(S,L,R):- findall(Z,(member(Z,L),not(member(Z,S))),R).
 
 
+findtime([P|T], O) :-
+      crossTime(P,Time),
+      findtime(T, Time, O).
 
-update(zgm(B,I,D),Carga,zgm(B1,I1,D1)):-
-      update_Bote(B,B1),                     
-      update_margenes(Carga,B,I,D,I1,D1).   
-                                             
+findtime([], P, P).
+findtime([H|T], P, O) :-
+    crossTime(H,Time),
+    (    Time > P
+    ->   findtime(T, Time, O)
+    ;    findtime(T, P, O)).
 
-update_Bote(izq,der).
-update_Bote(der,izq).
-
-
-
-update_margenes(solo,_,I,D,I,D). 
-
-
-update_margenes(Carga,izq,I,D,I1,D1):-
-      select(Carga,I,I1),      
-      insert(Carga,D,D1).       
-
-
-update_margenes(Carga,der,I,D,I1,D1):-
-      select(Carga,D,D1),        
-      insert(Carga,I,I1).        
-
-insert(X,[Y|Ys],[X,Y|Ys]):-precedes(X,Y).  
-insert(X,[Y|Ys],[Y|Zs]):-precedes(Y,X),insert(X,Ys,Zs). 
-insert(X,[],[X]).                          
-
-select(X,[X|Xs],Xs).                        
-select(X,[Y|Ys],[Y|Zs]):-select(X,Ys,Zs).     
-
-precedes(zorra,gallina).
-precedes(zorra,maiz).
-precedes(gallina,maiz).
-
-legal(zgm(izq,_,D)):-not(ilegal(D)).
-legal(zgm(der,I,_)):-not(ilegal(I)). 
-
-ilegal(L):-member(zorra,L),member(gallina,L). 
-ilegal(L):-member(gallina,L),member(maiz,L).  
+%---------------Legal
+legal([Time, _, _, _]) :-
+    timeLimit(Limit),
+    Time =< Limit.
 
