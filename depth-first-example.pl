@@ -41,7 +41,7 @@ opp(l,r).  opp(r,l).
 /* time for crossing the bridge - time is a system predicate */
 tim(a,1).
 tim(b,2).
-tim(c,5).
+tim(c,7).
 tim(d,10).
 /* define the arcs (or move conditions from a state node) to another state(node) */
 arc([T1,F1,L1,R1], [T2,F2,L2,R2]):- opp(F1,F2),

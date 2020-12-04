@@ -5,7 +5,7 @@
 
 
 %------------------Depth first call
-depth_first_bridge(State, Sol) :-
+depth_first_bridge(Sol) :-
       initial_state(State),      
       solve_dfs(State,[State],Sol).
 
@@ -22,15 +22,26 @@ solve_dfs(State,Path,[Move|Moves]) :-
 
 
 %---------------Initial state
+/*
 initial_state([0,l,[a,b,c,d],[]]):-
       assert(timeLimit(17)),
       assert(crosserLimit(2)),
       assert(crossTime(a,1)),
       assert(crossTime(b,2)),
-      assert(crossTime(c,7)),
+      assert(crossTime(c,5)),
       assert(crossTime(d,10)).
+*/
 
-/*
+prueba():-
+      read(X),
+      test(X).
+
+test('Y'):-
+      write('putosTodos').
+test(_):-
+      write('putos').
+
+
 initial_state([0,l,L,[]]):-
       input_time_limit(0, 0),
       input_crossers('Y'),
@@ -68,17 +79,17 @@ input_crossers('Y') :-
       write('Desea ingresar otra persona? (Y/N):'),nl,
       read(X),
       input_crossers(X).
-input_crossers('N').
+
+input_crossers(_).
 
 assert_crossers(Name, Time):-
       assert(crossTime(Name, Time)).
-*/
+
 
 %---------------Final state
-final_state([Time,r,[],L]):-
+final_state([Time,r,[],[a,b,c,d]]):-
       timeLimit(X),
-      Time =< X,
-      find_all_crossers([],L).
+      Time =< X.
 
 find_all_crossers(Tmp,List):-
       (
@@ -95,8 +106,9 @@ move([_,r,_,Right],Move):-
       cross(Right,Move).
 
 cross(Side,Move):- 
-      comb(1,Side,Move);
-      comb(2,Side,Move).
+      crosserLimit(Limit),
+      between(1,Limit,Size),
+      comb(Size,Side,Move).
 
 comb(N,L,X):-length(X,N),mem1(X,L).
 
