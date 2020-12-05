@@ -43,30 +43,30 @@ test(_):-
 
 
 initial_state([0,l,L,[]]):-
-      input_time_limit(0, 0),
+      input_time_limit('N', 0),
       input_crossers('Y'),
-      input_crosser_limit(0, 0),
+      input_crosser_limit('N', 0),
       find_all_crossers([],L).
 
 input_time_limit('Y',Time):-
       assert(timeLimit(Time)).
 
-input_time_limit(_,_):-
-    write('Digite el tiempo limite en minutos:'),nl,
+input_time_limit('N',_):-
+    write('Digite el tiempo limite en minutos: '),nl,
     read(Time),
-    write('Es este tiempo correcto? (Y/N)'),nl,
-    write(Time),write(':'),
+    write('Es este tiempo: '), 
+    write(Time),write(', correcto? (Y/N)'),nl,
     read(Response),
     input_time_limit(Response,Time).
 
 input_crosser_limit('Y',Limit):-
       assert(crosserLimit(Limit)).
 
-input_crosser_limit(_,_):-
-    write('Digite el limite del puente:'),nl,
+input_crosser_limit('N',_):-
+    write('Digite la capacidad limite del puente: '),nl,
     read(Limit),
-    write('Es este limite correcto? (Y/N)'),nl,
-    write(Limit),write(':'),
+    write('Es esta capacidad: '), 
+    write(Limit),write(', correcta? (Y/N)'),nl,
     read(Response),
     input_crosser_limit(Response,Limit).
 
@@ -80,16 +80,17 @@ input_crossers('Y') :-
       read(X),
       input_crossers(X).
 
-input_crossers(_).
+input_crossers('N').
 
 assert_crossers(Name, Time):-
       assert(crossTime(Name, Time)).
 
 
 %---------------Final state
-final_state([Time,r,[],[a,b,c,d]]):-
+final_state([Time,r,[],L]):-
       timeLimit(X),
-      Time =< X.
+      Time =< X,
+      find_all_crossers([],L).
 
 find_all_crossers(Tmp,List):-
       (
@@ -149,3 +150,7 @@ legal([Time, _, _, _]) :-
     timeLimit(Limit),
     Time =< Limit.
 
+
+
+range(X, L, H) :- X is H - 1, X > L.
+range(X, L, H) :- H1 is H - 1, H1 > L, range(X, L, H1).
