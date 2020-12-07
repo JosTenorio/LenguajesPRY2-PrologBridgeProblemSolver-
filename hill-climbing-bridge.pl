@@ -2,26 +2,71 @@
 :- dynamic(crossTime/2).
 :- dynamic(timeLimit/1).
 :- dynamic(crosserLimit/1).
+:- dynamic(totalCrossingTimes/1).
+
+%------------------Hill Climbing call
+hill_climbing_bridge() :-
+    initial_state(State),           
+    solve_hill_climb(State,[State],Moves), 
+    nl,
+    write('Possible solution (moves): '),
+    write(Moves),nl.
+
+solve_hill_climb(State,_,[]) :-
+    final_state(State).
+
+solve_hill_climb(State,History,[Move|Moves]) :-
+    hill_climb(State,Move),      
+    update(State,Move,State1),   
+    legal(State1),               
+    not(member(State1,History)), 
+    solve_hill_climb(State1,[State1|History],Moves).   
+
+%------------------Hill Climbing solving
+hill_climb(State,Move) :-
+    findall(M,move(State,M),Moves),         
+    evaluate_and_order(Moves,State,[],MVs), 
+    member((Move,_),MVs).                   
+
+evaluate_and_order([Move|Moves],State,MVs,OrderedMVs) :-    
+    value(State,Move,Value),               
+    insertPair((Move,Value),MVs,MVs1), 
+    evaluate_and_order(Moves,State,MVs1,OrderedMVs).  
+    
+evaluate_and_order([],_,MVs,MVs).
+
+insertPair(MV,[],[MV]).
+insertPair((M,V),[(M1,V1)|MVs],[(M,V),(M1,V1)|MVs]) :-
+    V >= V1.
+insertPair((M,V),[(M1,V1)|MVs],[(M1,V1)|MVs1]) :-
+    V < V1,insertPair((M,V),MVs,MVs1).
+
+value([_,r,_,_],Move,Value):-
+    crossing_times(Move, Times),
+    sum_list(Times,Time_sum),
+    totalCrossingTimes(Total),
+    Max is Total + 1,
+    Value is Max - Time_sum.
 
 
-%------------------Depth first call
-depth_first_bridge() :-
-      initial_state(State),      
-      solve_dfs(State,[],Sol),
-      nl,
-      write('Possible solution (moves): '),
-      write(Sol),nl.
+value([_,l,_,[]],Move,Value):-
+    crossing_times(Move, Times),
+    sum_list(Times,Time_sum),
+    totalCrossingTimes(Total),
+    Max is Total + 1,
+    Value is Max - Time_sum.
 
-%------------------Depth first solving
-solve_dfs(State, _, []) :- 
-      final_state(State).
+value([_,l,L,R],Move,Value):-
 
-solve_dfs(State,Path, [Move|Moves]) :-
-      move(State, Move),
-      update(State, Move, NewState),
-      legal(NewState),
-      not(member(NewState, Path)),
-      solve_dfs(NewState, [State|Path], Moves).
+
+crossing_times([], 0).
+crossing_times(Crossers, L1) :-
+    findall(Y,(crossTime(X,Y),member(X,Crossers)),L1),
+
+sum_list([], 0).
+sum_list([H|T], Sum) :-
+   sum_list(T, Rest),
+   Sum is H + Rest.
 
 %---------------Parameters
 %Through dynamic statements, it is possible to avoid user input of parameters
@@ -32,7 +77,7 @@ crossTime(beatriz,2).
 crossTime(carlos,5).
 crossTime(dora,10).
 crossTime(emilio,15).
-crossTime(julio,20).
+crossTime(julio,15).
 
 %The following code allows for user input of the parameters
 /*
@@ -40,7 +85,9 @@ initial_state([0,l,L,[]]):-
       input_time_limit('N', 0),
       input_crossers('Y'),
       input_crosser_limit('N', 0),
-      find_all_crossers([],L).
+      find_all_crossers([],L),
+      sum_croosing_times(L,Times),
+      assert(totalCrossingTimes(Times)).
 
 input_time_limit('Y',Time):-
       assert(timeLimit(Time)).
@@ -84,7 +131,10 @@ assert_crossers(Name, Time):-
 %---------------Initial state
 
 initial_state([0,l,L,[]]):-
-      findall(X,crossTime(X,_),L).
+    findall(X,crossTime(X,_),L),
+    crossing_times(L, Times),
+    sum_list(Times,Time_sum),
+    assert(totalCrossingTimes(Time_sum)).
 
 %---------------Final state
 final_state([_,r,[],L2]):-
