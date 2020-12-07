@@ -3,45 +3,37 @@
 :- dynamic(crosserLimit/1).
 
 
-
 %------------------Depth first call
 depth_first_bridge(Sol) :-
       initial_state(State),      
-      solve_dfs(State,[State],Sol).
+      solve_dfs(State,[],Sol).
 
 %------------------Depth first solving
-solve_dfs(State, _, []) :- 
+solve_dfs(State, Path, []) :- 
       final_state(State).
 
-solve_dfs(State,Path,[Move|Moves]) :-
+solve_dfs(State,Path, [Move|Moves]) :-
       move(State, Move),
       update(State, Move, NewState),
       legal(NewState),
       not(member(NewState, Path)),
       solve_dfs(NewState, [State|Path], Moves).
 
+%---------------Parameters
+timeLimit(17).
+crosserLimit(2).
+crossTime(a,1).
+crossTime(b,2).
+crossTime(c,5).
+crossTime(d,10).
 
 %---------------Initial state
+
+initial_state([0,l,L,[]]):-
+      find_all_crossers([],X),
+      reverse(X,L).
+
 /*
-initial_state([0,l,[a,b,c,d],[]]):-
-      assert(timeLimit(17)),
-      assert(crosserLimit(2)),
-      assert(crossTime(a,1)),
-      assert(crossTime(b,2)),
-      assert(crossTime(c,5)),
-      assert(crossTime(d,10)).
-*/
-
-prueba():-
-      read(X),
-      test(X).
-
-test('Y'):-
-      write('putosTodos').
-test(_):-
-      write('putos').
-
-
 initial_state([0,l,L,[]]):-
       input_time_limit('N', 0),
       input_crossers('Y'),
@@ -84,13 +76,13 @@ input_crossers('N').
 
 assert_crossers(Name, Time):-
       assert(crossTime(Name, Time)).
+*/
 
 
 %---------------Final state
-final_state([Time,r,[],L]):-
-      timeLimit(X),
-      Time =< X,
-      find_all_crossers([],L).
+final_state([_,r,[],L]):-
+      find_all_crossers([],X),
+      isSubset(X,L).
 
 find_all_crossers(Tmp,List):-
       (
@@ -106,10 +98,13 @@ move([_,l,Left,_],Move):-
 move([_,r,_,Right],Move):-
       cross(Right,Move).
 
-cross(Side,Move):- 
+cross(Side,Move):-
+      /* 
       crosserLimit(Limit),
       between(1,Limit,Size),
-      comb(Size,Side,Move).
+      */
+      comb(1,Side,Move);
+      comb(2,Side,Move).
 
 comb(N,L,X):-length(X,N),mem1(X,L).
 
@@ -149,6 +144,16 @@ findtime([H|T], P, O) :-
 legal([Time, _, _, _]) :-
     timeLimit(Limit),
     Time =< Limit.
+
+
+isSubset([],_).
+isSubset([H|T],Y):-
+    member(H,Y),
+    select(H,Y,Z),
+    isSubset(T,Z).
+equal(X,Y):-
+    isSubset(X,Y),
+    isSubset(Y,X).
 
 
 
