@@ -6,156 +6,126 @@
 :- dynamic(top_1_crossers/1).
 :- dynamic(top_2_crossers/1).
 
-
 %---------------Parameters
 %Through dynamic statements, it is possible to avoid user input of parameters
-timeLimit(30).
-crosserLimit(3).
+timeLimit(28).
+crosserLimit(2).
 crossTime(alberto,1).
 crossTime(beatriz,2).
 crossTime(carlos,5).
 crossTime(dora,10).
 crossTime(emilio,15).
-crossTime(julio,20).
+%crossTime(julio,20).
 
 
-%------------------Hill Climbing call
-hill_climbing_bridge():-
-    initial_state(State),
-    solve_hc(State, [], Sol),
-    nl,
-    write('Possible solution (moves): '),
-    write(Sol),nl.
-
-%------------------Hill Climbing solving
-solve_hc(State, _, []):- 
-    final_state(State).
-
-solve_hc(State, Path, [Move|Moves]):- 
-    hill_climb(State, Move),
-    update(State, Move, State1),
-    legal(State1),
-    not(member(State1, Path)),
-    solve_hc(State1, [State|Path], Moves).
+%----------------Best First call
+test_best_search() :-
+   initial_state(State),    
+   solve_best([punto(State,[],0)],[State],Sol),
+   nl,
+   write('Possible solution (moves): '),
+   write(Sol),nl.
 
 
-hill_climb(State, Move):-
-    findall(X, move(State, X), Moves),
-    evaluate_order(State, Moves,[], Ordered_moves),
-    member((Move, _), Ordered_moves).
+
+%----------------Best First solving
+solve_best([punto(State,Path,_)|_],_,Moves) :-
+    final_state(State),reverse(Path,Moves).
+solve_best([punto(State,Path,_)|Frontier],History,FinalPath) :-
+    findall(M,move(State,M),Moves),     
+    updates(Moves,Path,State,States),   
+    legals(States,States1),            
+    news(States1,History,States2),     
+    evaluates(States2,Values),          
+    inserts(Values,Frontier,Frontier1), 
+    solve_best(Frontier1,[State|History],FinalPath). 
+
+updates([M|Ms],Path,S,[(S1,[M|Path])|Ss]) :-
+    update(S,M,S1),         
+    updates(Ms,Path,S,Ss).  
+updates([],_,_,[]).
+
+legals([(S,P)|States],[(S,P)|States1]) :-
+    legal(S),
+    legals(States,States1).
+legals([(S,_)|States],States1) :-
+    not(legal(S)),
+    legals(States,States1). 
+legals([],[]).
 
 
-evaluate_order(_, [], Accumulated, Accumulated).
-evaluate_order(State,[Move|Moves],Accumulated, Ordered_moves):-
-    update(State, Move, State1),        
-    value(State, State1, Value),               
-    insert_pair((Move, Value), Accumulated, Temp), 
-    evaluate_order(State, Moves, Temp, Ordered_moves).
+news([(S,_)|States],History,States1) :-
+    member(S,History),
+    news(States,History,States1).
+news([(S,P)|States],History,[(S,P)|States1]) :-
+    not(member(S,History)),
+    news(States,History,States1). 
+news([],_,[]).
 
-insert_pair(MV, [], [MV]).
-insert_pair((M, V), [(M1, V1)|MVs], [(M, V), (M1, V1)|MVs]):-
-    V >= V1.
-insert_pair((M, V), [(M1, V1)|MVs], [(M1, V1)|MVs1]) :-
-    V < V1,
-    insert_pair((M, V), MVs, MVs1).
+evaluates([(S,P)|States],[punto(S,P,V)|Values]) :-
+    value(S,V),                
+    evaluates(States,Values).  
+evaluates([],[]).
+
+
+inserts([Punto|Puntos],Frontier,Frontier1) :-
+    insertPoint(Punto,Frontier,Frontier0), 
+    inserts(Puntos,Frontier0,Frontier1).    
+inserts([],Frontier,Frontier).
+
+
+insertPoint(Point,[],[Point]).
+insertPoint(Point,[Point1|Points],[Point1,Point|Points]) :-
+    less_than(Point1,Point).
+insertPoint(Point,[Point1|Points],[Point|Points]) :-
+    equals(Point,Point1).
+insertPoint(Point,[Point1|Points],[Point1|Points1]) :-
+    less_than(Point,Point1),
+    insertPoint(Point,Points,Points1).
+insertPoint(Point,[Point1|Points],[Point,Point1|Points]) :-
+    same(Point,Point1).
+
+equals(punto(S,_,V),punto(S,_,V)).
+
+less_than(punto(S1,_,V1),punto(S2,_,V2)) :- S1 \= S2, V1 < V2.
+
+same(punto(S1,_,V1),punto(S2,_,V2)) :- S1 \= S2, V1 = V2.
 
 %---------------Value
-
 %When the torch came from the right, assign better values to the fastest crossers.
-value(_, [Time, l, _, _], Value):-
+value([Time, l, _, _], Value):-
     totalCrossingTimes(X),
     Max is X + 1,
     Value is Max - Time.
 
-%When the torch was on the left and the top crossers and the top crossers are on the same side,
-%favor the slowest crossers and the bigger groups
-value([_, _, CurrentL, CurrentR], [_, r, L, R], Value):-
+%When the torch was on the left and the top  1 crossers and the top 2 crossers are now on the same side,
+%assign better worse adjustment value and favor bigger groups
+value([_, r, L, R], Value):-
     top_1_crossers(Top_1_crossers),
     top_2_crossers(Top_2_crossers),
     append(Top_1_crossers,Top_2_crossers,Top_crossers),
-    (isSubset(Top_crossers,CurrentL); isSubset(Top_crossers,CurrentR)),
+    (isSubset(Top_crossers,L); isSubset(Top_crossers,R)),
     length(R, Len),
-    crossing_times(L, Times),
-    sum_list(Times, Sum_Times),
-    Value is Sum_Times + (Len*50).
+    Value is 1 + (Len*50).
 
-%When the torch was on the left and the top crossers and the top crossers are on different sides,
-%favor the fastest crossers and the bigger groups
-value([_, _, CurrentL, CurrentR], [_, r, L, R], Value) :-
+%When the torch was on the left and the top 1 crossers and the top 2 crossers are on different sides,
+%assign better better adjustment value and favor bigger groups
+value([_, r, L, R], Value):-
     top_1_crossers(Top_1_crossers),
     top_2_crossers(Top_2_crossers),
     append(Top_1_crossers,Top_2_crossers,Top_crossers),
-    not(isSubset(Top_crossers,CurrentL); isSubset(Top_crossers,CurrentR)),
+    not(isSubset(Top_crossers,L); isSubset(Top_crossers,R)),
     length(R, Len),
-    crossing_times(L, Times),
-    sum_list(Times, SumOfTimes),
-    totalCrossingTimes(X),
-    Max is X + 1,
-    Value is Max - SumOfTimes + (Len*50).
-
+    Value is 2 + (Len*50).
 
 sum_list([], 0).
 sum_list([H|T], Sum) :-
     sum_list(T, Rest),
     Sum is H + Rest.
 
-
 crossing_times([], 0).
 crossing_times(Crossers, L1):-
     findall(Y,(crossTime(X,Y),member(X,Crossers)),L1).
-
-
-%The following code allows for user input of the parameters
-/*
-initial_state([0,l,L,[]]):-
-    input_time_limit('N', 0),
-    input_crossers('Y'),
-    input_crosser_limit('N', 0),
-    findall(X,crossTime(X,_),L),
-    total_times(L,TotalCrossingTimes),
-    top_crossers(L,Top_1_crossers,Top_2_crossers),
-    assert(top_1_crossers(Top_1_crossers)),
-    assert(top_2_crossers(Top_2_crossers)),  
-    assert(totalCrossingTimes(TotalCrossingTimes)).
-
-input_time_limit('Y',Time):-
-      assert(timeLimit(Time)).
-
-input_time_limit('N',_):-
-    write('Digite el tiempo limite en minutos: '),nl,
-    read(Time),
-    write('Es este tiempo: '), 
-    write(Time),write(', correcto? (Y/N)'),nl,
-    read(Response),
-    input_time_limit(Response,Time).
-
-input_crosser_limit('Y',Limit):-
-      assert(crosserLimit(Limit)).
-
-input_crosser_limit('N',_):-
-    write('Digite la capacidad limite del puente: '),nl,
-    read(Limit),
-    write('Es esta capacidad: '), 
-    write(Limit),write(', correcta? (Y/N)'),nl,
-    read(Response),
-    input_crosser_limit(Response,Limit).
-
-input_crossers('Y') :-
-      write('Inserte el nombre de una persona:'),nl,
-      read(Name),
-      write('Inserte el tiempo que tarda en cruzar el puente:'),nl,
-      read(Time),
-      assert_crossers(Name,Time),
-      write('Desea ingresar otra persona? (Y/N):'),nl,
-      read(X),
-      input_crossers(X).
-
-input_crossers('N').
-
-assert_crossers(Name, Time):-
-      assert(crossTime(Name, Time)).
-*/
-
 
 %---------------Initial state
 

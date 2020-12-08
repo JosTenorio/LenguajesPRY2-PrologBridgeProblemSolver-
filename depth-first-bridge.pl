@@ -4,6 +4,19 @@
 :- dynamic(crosserLimit/1).
 
 
+%---------------Parameters
+%Through dynamic statements, it is possible to avoid user input of parameters
+timeLimit(42).
+crosserLimit(2).
+crossTime(alberto,1).
+crossTime(beatriz,2).
+crossTime(carlos,5).
+crossTime(dora,10).
+crossTime(emilio,15).
+crossTime(julio,20).
+
+
+
 %------------------Depth first call
 depth_first_bridge() :-
       initial_state(State),      
@@ -23,16 +36,6 @@ solve_dfs(State,Path, [Move|Moves]) :-
       not(member(NewState, Path)),
       solve_dfs(NewState, [State|Path], Moves).
 
-%---------------Parameters
-%Through dynamic statements, it is possible to avoid user input of parameters
-timeLimit(30).
-crosserLimit(3).
-crossTime(alberto,1).
-crossTime(beatriz,2).
-crossTime(carlos,5).
-crossTime(dora,10).
-crossTime(emilio,15).
-crossTime(julio,20).
 
 %The following code allows for user input of the parameters
 /*
@@ -154,7 +157,6 @@ update([T1,r,L1,R1], Move,[T2,l,L2,R2]):-
       T2 is T1+T.
 
 take(S,L,R):- findall(Z,(member(Z,L),not(member(Z,S))),R).
-
 
 findtime([P|T], O) :-
       crossTime(P,Time),
